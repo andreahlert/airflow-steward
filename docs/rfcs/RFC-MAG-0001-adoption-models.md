@@ -3,33 +3,33 @@
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
 - [RFC-MAG-0001: Adoption models (intent vs skill vs hybrid)](#rfc-mag-0001-adoption-models-intent-vs-skill-vs-hybrid)
-- [Dois modelos pra configurar Magpie num projeto adopter](#dois-modelos-pra-configurar-magpie-num-projeto-adopter)
-  - [O problema](#o-problema)
-  - [Modelo A: Intent-based (estilo Terraform)](#modelo-a-intent-based-estilo-terraform)
-    - [A ideia](#a-ideia)
-    - [Como o adopter declara](#como-o-adopter-declara)
-    - [O que o Magpie faz](#o-que-o-magpie-faz)
-    - [Analogia leiga](#analogia-leiga)
-    - [Vantagens](#vantagens)
-    - [Desvantagens](#desvantagens)
-  - [Modelo B: Skill-based (estilo Ansible)](#modelo-b-skill-based-estilo-ansible)
-    - [A ideia](#a-ideia-1)
-    - [Como o adopter declara](#como-o-adopter-declara-1)
-    - [O que o Magpie faz](#o-que-o-magpie-faz-1)
-    - [Analogia leiga](#analogia-leiga-1)
-    - [Vantagens](#vantagens-1)
-    - [Desvantagens](#desvantagens-1)
-  - [Modelo C: Intent com lock de skills (híbrido)](#modelo-c-intent-com-lock-de-skills-h%C3%ADbrido)
-    - [A ideia](#a-ideia-2)
-    - [Como o adopter declara](#como-o-adopter-declara-2)
-    - [Como o ciclo funciona](#como-o-ciclo-funciona)
-    - [Analogia leiga](#analogia-leiga-2)
-    - [Vantagens](#vantagens-2)
-    - [Desvantagens](#desvantagens-2)
-    - [Quando faz sentido](#quando-faz-sentido)
-  - [Comparação lado a lado](#compara%C3%A7%C3%A3o-lado-a-lado)
-  - [Onde Magpie está hoje](#onde-magpie-est%C3%A1-hoje)
-  - [A pergunta de design](#a-pergunta-de-design)
+- [Two models for configuring Magpie in an adopter project](#two-models-for-configuring-magpie-in-an-adopter-project)
+  - [The problem](#the-problem)
+  - [Model A: Intent-based (Terraform style)](#model-a-intent-based-terraform-style)
+    - [The idea](#the-idea)
+    - [How the adopter declares](#how-the-adopter-declares)
+    - [What Magpie does](#what-magpie-does)
+    - [Layman analogy](#layman-analogy)
+    - [Advantages](#advantages)
+    - [Disadvantages](#disadvantages)
+  - [Model B: Skill-based (Ansible style)](#model-b-skill-based-ansible-style)
+    - [The idea](#the-idea-1)
+    - [How the adopter declares](#how-the-adopter-declares-1)
+    - [What Magpie does](#what-magpie-does-1)
+    - [Layman analogy](#layman-analogy-1)
+    - [Advantages](#advantages-1)
+    - [Disadvantages](#disadvantages-1)
+  - [Model C: Intent with skill lock (hybrid)](#model-c-intent-with-skill-lock-hybrid)
+    - [The idea](#the-idea-2)
+    - [How the adopter declares](#how-the-adopter-declares-2)
+    - [How the cycle works](#how-the-cycle-works)
+    - [Layman analogy](#layman-analogy-2)
+    - [Advantages](#advantages-2)
+    - [Disadvantages](#disadvantages-2)
+    - [When it makes sense](#when-it-makes-sense)
+  - [Side-by-side comparison](#side-by-side-comparison)
+  - [Where Magpie is today](#where-magpie-is-today)
+  - [The design question](#the-design-question)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -39,76 +39,76 @@
 
 | Field | Value |
 |---|---|
-| Status | Accepted (Model C selected) |
+| Status | Proposed (Model C recommended; under discussion on dev@) |
 | Authors | André Ahlert, Apache Magpie working group |
 | Tracking issue | [#1](https://github.com/andreahlert/magpie/issues/1) |
 | Related RFC | [RFC-MAG-0002](RFC-MAG-0002-model-c-structural-impact.md) |
 
-# Dois modelos pra configurar Magpie num projeto adopter
+# Two models for configuring Magpie in an adopter project
 
-Documento exploratório. Explica três formas possíveis de um projeto open-source dizer pro Magpie o que quer que ele faça. Linguagem acessível para dev que nunca usou Terraform nem Ansible.
+Exploratory document. Explains three possible ways for an open-source project to tell Magpie what it wants it to do. Language is kept accessible for a developer who has never used Terraform or Ansible.
 
-## O problema
+## The problem
 
-Magpie é uma plataforma de skills (capacidades de agente). Tem coisa pra triagem de issue, pra revisar PR, pra cuidar de fluxo de security, pra mentorar contributor novo, etc. Total: dezenas de skills.
+Magpie is a platform of skills (agent capabilities). There are skills for issue triage, for reviewing PRs, for handling the security flow, for mentoring a new contributor, and so on. Total: dozens of skills.
 
-Um projeto que quer adotar Magpie (por exemplo, Apache Airflow) não quer ligar tudo. Quer escolher. A pergunta é: **como o adopter escolhe?**
+A project that wants to adopt Magpie (Apache Airflow, for example) does not want to turn everything on. It wants to choose. The question is: **how does the adopter choose?**
 
-Existem dois jeitos clássicos de modelar essa escolha. Os nomes vêm de ferramentas de infra (Terraform e Ansible), mas o conceito vale pra qualquer sistema que precisa de configuração.
+There are two classic ways to model this choice. The names come from infrastructure tooling (Terraform and Ansible), but the concept applies to any system that needs configuration.
 
-## Modelo A: Intent-based (estilo Terraform)
+## Model A: Intent-based (Terraform style)
 
-### A ideia
+### The idea
 
-O adopter descreve **o que quer**, não **como fazer**. O sistema descobre quais skills ligar a partir disso.
+The adopter describes **what it wants**, not **how to do it**. The system figures out which skills to enable from that.
 
-### Como o adopter declara
+### How the adopter declares
 
 ```yaml
 # .apache-steward.lock
 capabilities:
-  domains: [security, pr-queue]          # áreas que me interessam
-  audience: [maintainer-inbound]         # quem é meu público
-  risk-tier-max: draft-pr                # até onde aceito ir
-  integrations: [github, jira, ponymail] # ferramentas que uso
+  domains: [security, pr-queue]          # areas I care about
+  audience: [maintainer-inbound]         # who my audience is
+  risk-tier-max: draft-pr                # how far I am willing to go
+  integrations: [github, jira, ponymail] # tools I use
 ```
 
-### O que o Magpie faz
+### What Magpie does
 
-Um componente chamado **reconciler** lê esse arquivo e pensa:
+A component called the **reconciler** reads this file and reasons:
 
-- "Esse projeto cuida de security e PR queue."
-- "Risco máximo é draft-pr (agente escreve, humano merge). Skills de auto-merge ficam fora."
-- "Audience é maintainer inbound. Skills de dev-side pairing ficam fora."
-- "Usa GitHub, Jira, Ponymail. Skills que dependem de Gmail ficam fora."
+- "This project handles security and the PR queue."
+- "Max risk is draft-pr (agent writes, human merges). Auto-merge skills are out."
+- "Audience is maintainer inbound. Dev-side pairing skills are out."
+- "Uses GitHub, Jira, Ponymail. Skills that depend on Gmail are out."
 
-A partir desse cruzamento, o reconciler **gera** a lista de skills habilitadas e materializa os arquivos no projeto.
+From that intersection, the reconciler **generates** the list of enabled skills and materializes the files in the project.
 
-### Analogia leiga
+### Layman analogy
 
-Você diz pro Uber: "quero ir do aeroporto pra casa, prefiro carro, até R$50". O app escolhe motorista e rota. Você nunca pediu "Honda Civic placa ABC1234 pela Marginal".
+You tell Uber: "I want to go from the airport home, I prefer a car, up to R$50." The app picks the driver and the route. You never asked for "Honda Civic, plate ABC1234, via the Marginal."
 
-### Vantagens
+### Advantages
 
-- Adopter raciocina em **conceitos do domínio dele** (domínios, risco, audience), não em nomes de skills.
-- Quando Magpie adiciona uma skill nova de PR queue, ela aparece automaticamente em projetos que disseram `domains: [pr-queue]`. Sem precisar editar config manual.
-- Linguagem do lock file é estável. Skills internas mudam de nome sem quebrar nada.
-- Conversa com PMC fica clara: "quanto risco aceitamos?" é decisão humana, não trivia técnica.
+- The adopter reasons in **concepts from its own domain** (domains, risk, audience), not in skill names.
+- When Magpie adds a new PR-queue skill, it shows up automatically in projects that declared `domains: [pr-queue]`. No manual config edit needed.
+- The lock file's language is stable. Internal skills get renamed without breaking anything.
+- The conversation with the PMC stays clear: "how much risk do we accept?" is a human decision, not technical trivia.
 
-### Desvantagens
+### Disadvantages
 
-- Reconciler precisa existir. Alguém escreve e mantém. Tem lógica não trivial.
-- Cada skill precisa de **metadata machine-readable** declarando seus tags: `domain`, `audience`, `risk-tier`, `integrations`. Hoje skill é prose em SKILL.md. Precisa estruturar.
-- Adopter perde controle granular. Se quer ligar exatamente skill X mas não Y do mesmo domínio, fica desconfortável. Precisa de mecanismo de override fino.
-- Surpresa quando Magpie atualiza: skill nova entra sozinha. Bom pra adoção rápida, ruim pra projeto conservador.
+- The reconciler has to exist. Someone writes and maintains it. It carries non-trivial logic.
+- Each skill needs **machine-readable metadata** declaring its tags: `domain`, `audience`, `risk-tier`, `integrations`. Today a skill is prose in SKILL.md. It needs structuring.
+- The adopter loses granular control. If it wants to enable exactly skill X but not Y from the same domain, it gets uncomfortable. It needs a fine-grained override mechanism.
+- Surprise on upgrade: a new skill turns itself on. Good for fast adoption, bad for a conservative project.
 
-## Modelo B: Skill-based (estilo Ansible)
+## Model B: Skill-based (Ansible style)
 
-### A ideia
+### The idea
 
-O adopter **lista as skills que quer** uma por uma. Não há inferência. As tags `(domain, audience, risk)` existem só pra ajudar a navegar e filtrar na documentação.
+The adopter **lists the skills it wants** one by one. There is no inference. The tags `(domain, audience, risk)` exist only to help navigate and filter in the documentation.
 
-### Como o adopter declara
+### How the adopter declares
 
 ```yaml
 # .apache-steward.lock
@@ -118,46 +118,46 @@ skills:
   - security-cve-allocate
   - pr-management-triage
   - pr-management-code-review
-  # auto-merge, mentoring, pairing: não listados, ficam fora
+  # auto-merge, mentoring, pairing: not listed, stay out
 ```
 
-### O que o Magpie faz
+### What Magpie does
 
-Lê a lista. Habilita exatamente o que está ali. Fim.
+Reads the list. Enables exactly what is there. Done.
 
-### Analogia leiga
+### Layman analogy
 
-Você vai num restaurante e pede pelo cardápio: "salada Caesar, pizza margherita, suco de laranja". Garçom traz exatamente esses três itens. Não interpreta "tô com fome moderada e gosto de italiano" pra escolher por você.
+You go to a restaurant and order from the menu: "Caesar salad, margherita pizza, orange juice." The waiter brings exactly those three items. They do not interpret "I am moderately hungry and I like Italian" to choose for you.
 
-### Vantagens
+### Advantages
 
-- Simples de implementar. Sem reconciler, sem schema de capabilities, sem inferência.
-- Adopter tem controle total e previsível. Ligou skill X, recebe skill X.
-- Update do Magpie nunca habilita coisa nova sem o adopter pedir. Skills novas ficam dormentes até alguém editar o lock.
-- Skill metadata pode continuar em prose. Tags são só pra documentação.
+- Simple to implement. No reconciler, no capabilities schema, no inference.
+- The adopter has full, predictable control. Enabled skill X, gets skill X.
+- A Magpie upgrade never enables anything new without the adopter asking. New skills stay dormant until someone edits the lock.
+- Skill metadata can stay as prose. Tags are just for documentation.
 
-### Desvantagens
+### Disadvantages
 
-- Adopter precisa conhecer o catálogo de skills. Onboarding mais alto.
-- Discussão com PMC vira granular demais. "Liga security-issue-deduplicate?" é pergunta técnica, não estratégica.
-- Skills relacionadas precisam ser ligadas em conjunto manualmente. Esquecer uma quebra fluxo.
-- Quando Magpie renomeia ou divide uma skill, **todo adopter quebra**. Lock file referencia identificador interno.
-- Sem semântica de "risco máximo". Adopter pode ligar auto-merge por engano se não conhecer a taxonomia.
+- The adopter has to know the skill catalog. Higher onboarding cost.
+- The discussion with the PMC becomes too granular. "Do we enable security-issue-deduplicate?" is a technical question, not a strategic one.
+- Related skills have to be enabled together by hand. Forgetting one breaks the flow.
+- When Magpie renames or splits a skill, **every adopter breaks**. The lock file references an internal identifier.
+- No "max risk" semantics. The adopter can enable auto-merge by mistake if it does not know the taxonomy.
 
-## Modelo C: Intent com lock de skills (híbrido)
+## Model C: Intent with skill lock (hybrid)
 
-### A ideia
+### The idea
 
-Adopter declara intent (capabilities). Reconciler resolve a lista de skills. Mas o resultado dessa resolução fica **escrito num lock file**, e o adopter pode anotar nele exceções cirúrgicas: pinar uma skill numa versão, excluir uma skill que o reconciler ligou, forçar uma skill que o reconciler não pegou.
+The adopter declares intent (capabilities). The reconciler resolves the skill list. But the result of that resolution is **written to a lock file**, and the adopter can annotate surgical exceptions in it: pin a skill to a version, exclude a skill the reconciler enabled, force-include a skill the reconciler did not pick up.
 
-É o casamento dos dois mundos anteriores. A intent guia o caso comum, o lock cobre o caso especial.
+It is the marriage of the two previous worlds. Intent guides the common case, the lock covers the special case.
 
-### Como o adopter declara
+### How the adopter declares
 
-Dois arquivos, papéis distintos. Um é desejo, outro é resolução congelada.
+Two files, distinct roles. One is desire, the other is frozen resolution.
 
 ```yaml
-# .apache-steward.intent.yaml (committed, editado a mão)
+# .apache-steward.intent.yaml (committed, hand-edited)
 capabilities:
   domains: [security, pr-queue]
   audience: [maintainer-inbound]
@@ -166,15 +166,15 @@ capabilities:
 
 overrides:
   exclude:
-    - pr-management-code-review     # não queremos esta, mesmo entrando no domínio
+    - pr-management-code-review     # we do not want this one, even though it falls in the domain
   force-include:
-    - contributor-nomination        # queremos esta, fora do domínio declarado
+    - contributor-nomination        # we want this one, outside the declared domain
   pin:
-    security-issue-import: "1.4.2"  # travado nessa versão até validarmos a próxima
+    security-issue-import: "1.4.2"  # locked to this version until we validate the next one
 ```
 
 ```yaml
-# .apache-steward.lock (committed, gerado pelo reconciler)
+# .apache-steward.lock (committed, generated by the reconciler)
 generated-from: .apache-steward.intent.yaml
 generated-at: 2026-05-28T14:00:00Z
 skills:
@@ -182,76 +182,76 @@ skills:
   security-issue-deduplicate: { version: "1.6.0", source: intent.domains }
   pr-management-triage: { version: "2.1.0", source: intent.domains }
   contributor-nomination: { version: "0.3.1", source: intent.overrides.force-include }
-  # pr-management-code-review: ausente, source: intent.overrides.exclude
+  # pr-management-code-review: absent, source: intent.overrides.exclude
 ```
 
-### Como o ciclo funciona
+### How the cycle works
 
-1. Adopter edita `intent.yaml`. Roda `magpie plan`.
-2. Plan mostra diff: "vai adicionar X, remover Y, manter Z na versão pinada".
-3. Adopter roda `magpie apply`. Reconciler escreve `lock` novo e materializa workspace.
-4. Commit dos dois arquivos. Reviewer vê tanto o **desejo** quanto o **resultado**.
+1. The adopter edits `intent.yaml`. Runs `magpie plan`.
+2. Plan shows the diff: "will add X, remove Y, keep Z at the pinned version."
+3. The adopter runs `magpie apply`. The reconciler writes a new `lock` and materializes the workspace.
+4. Both files are committed. The reviewer sees both the **desire** and the **result**.
 
-### Analogia leiga
+### Layman analogy
 
-`package.json` versus `package-lock.json` no Node. Você escreve `"react": "^18.0.0"` (intent: aceito qualquer 18.x). O npm resolve pra `18.2.0` exato e congela no lock. Se quiser pinar exatamente uma versão diferente, edita o lock ou troca a faixa no `package.json`. Os dois arquivos vão pro git.
+`package.json` versus `package-lock.json` in Node. You write `"react": "^18.0.0"` (intent: I accept any 18.x). npm resolves it to exactly `18.2.0` and freezes it in the lock. If you want to pin a different exact version, you edit the lock or change the range in `package.json`. Both files go to git.
 
-### Vantagens
+### Advantages
 
-- Caso comum (90% das adoções) usa só intent, sem mexer em skill individual.
-- Casos especiais cabem sem virar exceção quebrada. Override é parte do modelo, não hack.
-- Lock dá **reproducibilidade exata**. Dois clones do repo adopter em máquinas diferentes resolvem pra mesma lista.
-- Update do Magpie roda `magpie plan` antes de tocar nada. PMC vê o diff e decide. Não tem surpresa.
-- Reviewer de PR no repo adopter vê **intent + lock + diff materializado** num único commit. Auditável.
-- Skills renomeadas geram erro de reconciliação claro: "skill X (referenciada em overrides.pin) não existe mais, migrada pra Y". Adopter atualiza intent, não código.
+- The common case (90% of adoptions) uses only intent, without touching an individual skill.
+- Special cases fit without becoming a broken exception. Override is part of the model, not a hack.
+- The lock gives **exact reproducibility**. Two clones of the adopter repo on different machines resolve to the same list.
+- A Magpie upgrade runs `magpie plan` before touching anything. The PMC sees the diff and decides. No surprises.
+- A PR reviewer in the adopter repo sees **intent + lock + materialized diff** in a single commit. Auditable.
+- Renamed skills produce a clear reconciliation error: "skill X (referenced in overrides.pin) no longer exists, migrated to Y." The adopter updates intent, not code.
 
-### Desvantagens
+### Disadvantages
 
-- Mais arquivos. Mais conceitos a explicar (intent vs lock, plan vs apply).
-- Reconciler tem que existir e ser sólido. Mesmo custo do Modelo A.
-- Override demais e o adopter sai do regime intent na prática. Vira skill-based com decoração. Precisa de disciplina e linting ("se você tem >5 overrides, repensa o intent").
-- Conflito de merge em `lock` pode ser feio quando dois PRs alteram intent ao mesmo tempo. Solução conhecida (regerar), mas demanda doc.
+- More files. More concepts to explain (intent vs lock, plan vs apply).
+- The reconciler has to exist and be solid. Same cost as Model A.
+- Too many overrides and the adopter effectively leaves the intent regime. It becomes skill-based with decoration. Requires discipline and linting ("if you have >5 overrides, rethink the intent").
+- A merge conflict in `lock` can be ugly when two PRs change intent at the same time. The solution is known (regenerate), but it needs documentation.
 
-### Quando faz sentido
+### When it makes sense
 
-Faz sentido quando você espera adopters de perfis muito diferentes: alguns querem só ligar e usar (intent puro basta), outros vão precisar de exceção pontual sem virar o jogo todo. Apache funciona assim. Airflow opera diferente de Kafka, ambos diferentes de algum projeto não-ASF.
+It makes sense when you expect adopters with very different profiles: some just want to turn it on and use it (pure intent is enough), others will need a one-off exception without flipping the whole game. Apache works like this. Airflow operates differently from Kafka, both differently from some non-ASF project.
 
-Pelo desenho do Magpie (mission fala em "project autonomy" como starting point estrutural), o Modelo C é o que melhor preserva essa autonomia sem cair na sobrecarga cognitiva do skill-based puro.
+By Magpie's design (the mission speaks of "project autonomy" as a structural starting point), Model C is the one that best preserves that autonomy without falling into the cognitive overload of pure skill-based.
 
-## Comparação lado a lado
+## Side-by-side comparison
 
-| Critério | A. Intent puro | B. Skill puro | C. Intent + lock |
+| Criterion | A. Pure intent | B. Pure skill | C. Intent + lock |
 |----------|----------------|---------------|------------------|
-| Unidade de escolha | Capability | Skill individual | Capability, com override por skill |
-| Quem decide set final | Reconciler | Adopter | Reconciler + overrides do adopter |
-| Onboarding | Responde 4 perguntas | Lê catálogo, escolhe N | Responde 4 perguntas, override depois se precisar |
-| Update do Magpie | Skill nova entra sozinha | Skill nova dorme | `plan` mostra diff, adopter decide |
-| Quebra em renomeação | Não | Sim, quebra lock | Erro de reconciliação claro, migração guiada |
-| Controle granular | Precisa hack | Nativo | Nativo via overrides |
-| Discussão com PMC | Estratégica | Técnica | Estratégica no comum, técnica no especial |
-| Reproducibilidade entre máquinas | Boa | Exata | Exata |
-| Custo de implementar | Reconciler + metadata | Catálogo documentado | Reconciler + metadata + plan/apply |
-| Risco principal | Surpresa em update | Onboarding pesado, drift | Adopter abusa de override e perde o regime |
+| Unit of choice | Capability | Individual skill | Capability, with per-skill override |
+| Who decides the final set | Reconciler | Adopter | Reconciler + adopter overrides |
+| Onboarding | Answer 4 questions | Read catalog, choose N | Answer 4 questions, override later if needed |
+| Magpie upgrade | New skill turns itself on | New skill stays dormant | `plan` shows diff, adopter decides |
+| Breaks on rename | No | Yes, breaks the lock | Clear reconciliation error, guided migration |
+| Granular control | Needs a hack | Native | Native via overrides |
+| Discussion with PMC | Strategic | Technical | Strategic in the common case, technical in the special case |
+| Reproducibility across machines | Good | Exact | Exact |
+| Cost to implement | Reconciler + metadata | Documented catalog | Reconciler + metadata + plan/apply |
+| Main risk | Surprise on upgrade | Heavy onboarding, drift | Adopter abuses overrides and loses the regime |
 
-## Onde Magpie está hoje
+## Where Magpie is today
 
-Híbrido inclinado pro skill-based, mas grosseiro. O setup atual pergunta **skill families** (`security`, `pr-management`), que é meio caminho:
+A hybrid leaning toward skill-based, but coarse. The current setup asks about **skill families** (`security`, `pr-management`), which is halfway there:
 
-- Mais coarse que skill individual.
-- Mais coarse que capability.
-- Sem metadata machine-readable.
-- Sem reconciler.
+- Coarser than an individual skill.
+- Coarser than a capability.
+- No machine-readable metadata.
+- No reconciler.
 
-O lock file hoje guarda só **install pin** (de onde veio o framework, qual versão). Não guarda capability config nem skill enable list. As escolhas vivem nos symlinks criados durante o takeover, que é estado opaco.
+The lock file today stores only the **install pin** (where the framework came from, which version). It does not store capability config or a skill enable list. The choices live in the symlinks created during takeover, which is opaque state.
 
-## A pergunta de design
+## The design question
 
-Três opções, não duas. O default define a cara da plataforma.
+Three options, not two. The default defines the platform's face.
 
-- **A. Intent puro:** "diga o que precisa, eu monto". Adoção em escala, mas surpresa em update e override fica fora do modelo.
-- **B. Skill puro:** "catálogo aberto, monte seu kit". Controle máximo, mas onboarding pesado e quebra em renomeação.
-- **C. Intent + lock (híbrido):** intent como conversa principal, lock como contrato, override como exceção legítima. Mais conceitos, melhor preserva project autonomy.
+- **A. Pure intent:** "tell me what you need, I assemble it." Adoption at scale, but surprise on upgrade and override sits outside the model.
+- **B. Pure skill:** "open catalog, build your kit." Maximum control, but heavy onboarding and breakage on rename.
+- **C. Intent + lock (hybrid):** intent as the main conversation, lock as the contract, override as a legitimate exception. More concepts, better preserves project autonomy.
 
-C é o mais alinhado com o que MISSION.md declara sobre autonomia de projeto. Custa mais pra implementar (reconciler + plan/apply + metadata estruturada de skill), e exige disciplina contra abuso de override.
+C is the most aligned with what MISSION.md declares about project autonomy. It costs more to implement (reconciler + plan/apply + structured skill metadata), and it demands discipline against override abuse.
 
-A escolha não é só técnica. Determina o tipo de conversa que adopter tem com Magpie no momento da adoção, e o tipo de update que recebe ao longo do tempo.
+The choice is not only technical. It determines the kind of conversation an adopter has with Magpie at adoption time, and the kind of upgrade it receives over time.

@@ -3,24 +3,24 @@
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
 - [RFC-MAG-0002: Model C structural impact](#rfc-mag-0002-model-c-structural-impact)
-- [Modelo C: o que muda na estrutura do Magpie](#modelo-c-o-que-muda-na-estrutura-do-magpie)
-  - [Sumário do que precisa existir](#sum%C3%A1rio-do-que-precisa-existir)
-  - [Estrutura nova do repositório Magpie (fonte)](#estrutura-nova-do-reposit%C3%B3rio-magpie-fonte)
-    - [Mudanças destacadas](#mudan%C3%A7as-destacadas)
-  - [Estrutura nova do repositório adopter](#estrutura-nova-do-reposit%C3%B3rio-adopter)
-    - [Diferenças do estado atual](#diferen%C3%A7as-do-estado-atual)
-  - [Schema dos arquivos novos](#schema-dos-arquivos-novos)
-    - [Skill manifest (em cada skill)](#skill-manifest-em-cada-skill)
+- [Model C: what changes in Magpie's structure](#model-c-what-changes-in-magpies-structure)
+  - [Summary of what needs to exist](#summary-of-what-needs-to-exist)
+  - [New structure of the Magpie repository (source)](#new-structure-of-the-magpie-repository-source)
+    - [Highlighted changes](#highlighted-changes)
+  - [New structure of the adopter repository](#new-structure-of-the-adopter-repository)
+    - [Differences from the current state](#differences-from-the-current-state)
+  - [Schema of the new files](#schema-of-the-new-files)
+    - [Skill manifest (in each skill)](#skill-manifest-in-each-skill)
     - [Capability taxonomy](#capability-taxonomy)
     - [Adopter intent](#adopter-intent)
     - [Adopter lock](#adopter-lock)
-  - [O que o reconciler faz, passo a passo](#o-que-o-reconciler-faz-passo-a-passo)
-  - [Mudanças nas skills existentes](#mudan%C3%A7as-nas-skills-existentes)
-  - [Mudanças nos templates por adopter](#mudan%C3%A7as-nos-templates-por-adopter)
-  - [Mudanças nos docs](#mudan%C3%A7as-nos-docs)
-  - [Sequência de migração proposta](#sequ%C3%AAncia-de-migra%C3%A7%C3%A3o-proposta)
-  - [Riscos e mitigações](#riscos-e-mitiga%C3%A7%C3%B5es)
-  - [O que **não** muda](#o-que-n%C3%A3o-muda)
+  - [What the reconciler does, step by step](#what-the-reconciler-does-step-by-step)
+  - [Changes to existing skills](#changes-to-existing-skills)
+  - [Changes to per-adopter templates](#changes-to-per-adopter-templates)
+  - [Changes to the docs](#changes-to-the-docs)
+  - [Proposed migration sequence](#proposed-migration-sequence)
+  - [Risks and mitigations](#risks-and-mitigations)
+  - [What does **not** change](#what-does-not-change)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -30,34 +30,34 @@
 
 | Field | Value |
 |---|---|
-| Status | Accepted |
+| Status | Proposed (under discussion on dev@) |
 | Authors | André Ahlert, Apache Magpie working group |
 | Tracking issue | [#1](https://github.com/andreahlert/magpie/issues/1) |
 | Depends on | [RFC-MAG-0001](RFC-MAG-0001-adoption-models.md) |
 
-# Modelo C: o que muda na estrutura do Magpie
+# Model C: what changes in Magpie's structure
 
-Detalha o impacto estrutural e organizacional de adotar o **Modelo C (intent + lock)** descrito em [RFC-MAG-0001](RFC-MAG-0001-adoption-models.md). Cobre o repositório fonte do Magpie e o repositório do adopter.
+Details the structural and organizational impact of adopting **Model C (intent + lock)** described in [RFC-MAG-0001](RFC-MAG-0001-adoption-models.md). Covers both the Magpie source repository and the adopter repository.
 
-Leitura linear assume familiaridade com o RFC anterior.
+A linear reading assumes familiarity with the previous RFC.
 
-## Sumário do que precisa existir
+## Summary of what needs to exist
 
-Lista das peças novas que o Modelo C exige. Detalhadas nas seções seguintes.
+List of the new pieces Model C requires. Detailed in the sections that follow.
 
-1. **Skill manifest** machine-readable em cada skill, com tags estruturadas.
-2. **Capability taxonomy** versionada e canônica (domínios, audiences, risk tiers, integrações).
-3. **Reconciler** que cruza `intent.yaml` com taxonomia e manifests, emitindo lock.
-4. **Schema** formal dos arquivos `intent.yaml` e `lock`.
-5. **Plan/apply CLI** que opera o ciclo declarativo.
-6. **Override system** estruturado, com tipos definidos (exclude, force-include, pin, param-override).
-7. **Migration registry** que documenta renomeação, split e merge de skills entre versões.
-8. **Templates parametrizáveis** em vez de arquivos estáticos.
-9. **Skill registry index** agregado, gerado a partir dos manifests.
+1. **Skill manifest** that is machine-readable in each skill, with structured tags.
+2. **Capability taxonomy** that is versioned and canonical (domains, audiences, risk tiers, integrations).
+3. **Reconciler** that cross-references `intent.yaml` with the taxonomy and manifests, emitting a lock.
+4. **Formal schema** for the `intent.yaml` and `lock` files.
+5. **Plan/apply CLI** that drives the declarative cycle.
+6. **Override system** that is structured, with defined types (exclude, force-include, pin, param-override).
+7. **Migration registry** that documents skill renames, splits and merges across versions.
+8. **Parameterizable templates** instead of static files.
+9. **Skill registry index** that is aggregated, generated from the manifests.
 
-## Estrutura nova do repositório Magpie (fonte)
+## New structure of the Magpie repository (source)
 
-Comparação direta com o layout atual.
+Direct comparison with the current layout.
 
 ```text
 magpie/
@@ -72,50 +72,50 @@ magpie/
 │   │   ├── privacy.md
 │   │   └── scope.md
 │   ├── prompts/
-│   └── taxonomy/                           # NOVO
+│   └── taxonomy/                           # NEW
 │       ├── domains.yaml
 │       ├── audiences.yaml
 │       ├── risk-tiers.yaml
 │       └── integrations.yaml
 │
-├── skills/                                 # ex .claude/skills
+├── skills/                                 # was .claude/skills
 │   ├── security-issue-import/
-│   │   ├── manifest.yaml                   # NOVO, machine-readable
-│   │   ├── SKILL.md                        # prose, como hoje
-│   │   ├── templates/                      # arquivos parametrizáveis
+│   │   ├── manifest.yaml                   # NEW, machine-readable
+│   │   ├── SKILL.md                        # prose, as today
+│   │   ├── templates/                      # parameterizable files
 │   │   │   └── canned-replies.md.j2
-│   │   └── params.schema.json              # NOVO, params aceitos
+│   │   └── params.schema.json              # NEW, accepted params
 │   ├── pr-management-triage/
 │   │   └── ...
 │   └── ...
 │
-├── runtime/                                # ex tools/* serviços
+├── runtime/                                # was tools/* services
 │   ├── github/ jira/ gmail/ ponymail/
 │   └── ...
 │
-├── workflows/                              # ex tools/* orquestradores
+├── workflows/                              # was tools/* orchestrators
 │   ├── pr-management/ issue-management/
 │   └── ...
 │
-├── reconciler/                             # NOVO
+├── reconciler/                             # NEW
 │   ├── resolve.py                          # intent + taxonomy + manifests -> lock
-│   ├── plan.py                             # diff entre lock atual e novo
-│   ├── apply.py                            # materializa workspace adopter
-│   ├── migrations/                         # renomeações, splits
+│   ├── plan.py                             # diff between current and new lock
+│   ├── apply.py                            # materializes the adopter workspace
+│   ├── migrations/                         # renames, splits
 │   │   ├── 2026-04-01-split-pr-triage.yaml
 │   │   └── 2026-05-15-rename-security-import.yaml
 │   └── schemas/
 │       ├── intent.schema.json
 │       └── lock.schema.json
 │
-├── registry/                               # NOVO, gerado
-│   ├── skills-index.json                   # build artifact, agregado de manifests
-│   └── capabilities-matrix.md              # gerado, human-readable
+├── registry/                               # NEW, generated
+│   ├── skills-index.json                   # build artifact, aggregated from manifests
+│   └── capabilities-matrix.md              # generated, human-readable
 │
 ├── evals/
 ├── data-sources/
 │
-├── projects/                               # exemplos canônicos
+├── projects/                               # canonical examples
 │   └── _example-airflow/
 │       ├── .apache-steward.intent.yaml
 │       └── .apache-steward.lock
@@ -125,7 +125,7 @@ magpie/
     ├── governance/
     ├── rfcs/
     ├── setup/
-    ├── adoption/                           # NOVO, guia adopter
+    ├── adoption/                           # NEW, adopter guide
     │   ├── intent-cookbook.md
     │   ├── override-guide.md
     │   ├── plan-apply-cycle.md
@@ -133,42 +133,42 @@ magpie/
     └── contributing.md
 ```
 
-### Mudanças destacadas
+### Highlighted changes
 
-- `projects/_template/` desaparece como pasta de 20 .md estáticos. Vira `projects/_example-airflow/` com intent + lock reais. Templates de fato ficam dentro de cada skill em `skills/<n>/templates/`.
-- `.claude/skills/` vira `skills/` no topo. Skill deixa de ser detalhe de empacotamento Claude e vira cidadão de primeira classe do framework.
-- `reconciler/` é a engine. Sem ela o modelo não existe.
-- `registry/` é build artifact (commitado ou regerado em CI, escolha de processo).
-- `agent/taxonomy/` é o vocabulário canônico. Qualquer skill que invente tag fora dele falha o validador.
+- `projects/_template/` disappears as a folder of 20 static .md files. It becomes `projects/_example-airflow/` with real intent + lock. The actual templates live inside each skill in `skills/<n>/templates/`.
+- `.claude/skills/` becomes `skills/` at the top level. A skill stops being a Claude packaging detail and becomes a first-class citizen of the framework.
+- `reconciler/` is the engine. Without it the model does not exist.
+- `registry/` is a build artifact (committed or regenerated in CI, a process choice).
+- `agent/taxonomy/` is the canonical vocabulary. Any skill that invents a tag outside it fails the validator.
 
-## Estrutura nova do repositório adopter
+## New structure of the adopter repository
 
-Hoje o adopter ganha symlinks dentro de `.claude/skills/`, um lock parcial (só install pin), e um diretório de overrides solto. Com Modelo C:
+Today the adopter gets symlinks inside `.claude/skills/`, a partial lock (install pin only), and a loose overrides directory. With Model C:
 
 ```text
 <adopter-repo>/
 ├── .apache-steward.intent.yaml             # SOURCE OF TRUTH, committed
-├── .apache-steward.lock                    # gerado por `magpie apply`, committed
-├── .apache-steward.local.lock              # gitignored, "what fetched"
-├── .apache-steward/                        # gitignored, snapshot framework
-├── .apache-steward-overrides/              # estruturado, committed
+├── .apache-steward.lock                    # generated by `magpie apply`, committed
+├── .apache-steward.local.lock              # gitignored, "what was fetched"
+├── .apache-steward/                        # gitignored, framework snapshot
+├── .apache-steward-overrides/              # structured, committed
 │   ├── canned-replies/
-│   │   └── pr-management-triage.md         # override pontual de template
+│   │   └── pr-management-triage.md         # one-off template override
 │   └── params/
-│       └── security-issue-import.yaml      # override de params declarados
-└── .claude/skills/                         # symlinks gerados pelo apply
+│       └── security-issue-import.yaml      # override of declared params
+└── .claude/skills/                         # symlinks generated by apply
     └── ...
 ```
 
-### Diferenças do estado atual
+### Differences from the current state
 
-- Lock vira contrato completo de capacidade, não só pin de install.
-- Override deixa de ser pasta livre, ganha sub-pastas tipadas. Override de template vai em `canned-replies/`, override de parâmetro em `params/`. Permite o reconciler validar.
-- Symlinks são output do `apply`, não escolha manual durante onboarding.
+- The lock becomes a complete capability contract, not just an install pin.
+- The override stops being a free-form folder and gains typed subfolders. A template override goes in `canned-replies/`, a parameter override in `params/`. This lets the reconciler validate.
+- Symlinks are the output of `apply`, not a manual choice during onboarding.
 
-## Schema dos arquivos novos
+## Schema of the new files
 
-### Skill manifest (em cada skill)
+### Skill manifest (in each skill)
 
 ```yaml
 # skills/security-issue-import/manifest.yaml
@@ -261,40 +261,40 @@ exclusions:
 checksum: sha256:abc123...
 ```
 
-## O que o reconciler faz, passo a passo
+## What the reconciler does, step by step
 
-1. **Carrega taxonomia canônica** da versão do framework declarada.
-2. **Valida intent** contra schema. Erros: domínio inexistente, risk-tier inexistente, override apontando pra skill inexistente.
-3. **Filtra skill registry** pelos critérios do intent:
-   - Skills cujo `domains` intersecta `intent.capabilities.domains`.
-   - Risk tier da skill é menor ou igual a `intent.capabilities.risk-tier-max`.
-   - Audiences interseccionam.
-   - Integrações da skill são subset das declaradas.
-4. **Aplica overrides**:
-   - Remove skills em `exclude`.
-   - Adiciona skills em `force-include` (mesmo fora dos critérios; emite warning se viola risk-tier).
-   - Resolve `pin` versus última versão disponível.
-5. **Resolve dependências**: `requires` de cada skill puxa skills auxiliares (ex: setup).
-6. **Emite lock candidato**.
-7. **Plan**: compara lock candidato com lock corrente. Emite diff legível.
-8. **Apply**: escreve lock, materializa symlinks, escreve templates resolvidos no workspace adopter, dispara hook post-checkout.
+1. **Loads the canonical taxonomy** for the declared framework version.
+2. **Validates intent** against the schema. Errors: nonexistent domain, nonexistent risk-tier, an override pointing to a nonexistent skill.
+3. **Filters the skill registry** by the intent criteria:
+   - Skills whose `domains` intersect `intent.capabilities.domains`.
+   - The skill's risk tier is less than or equal to `intent.capabilities.risk-tier-max`.
+   - Audiences intersect.
+   - The skill's integrations are a subset of those declared.
+4. **Applies overrides**:
+   - Removes skills in `exclude`.
+   - Adds skills in `force-include` (even outside the criteria; emits a warning if it violates risk-tier).
+   - Resolves `pin` versus the latest available version.
+5. **Resolves dependencies**: each skill's `requires` pulls in auxiliary skills (for example, setup).
+6. **Emits a candidate lock**.
+7. **Plan**: compares the candidate lock with the current lock. Emits a readable diff.
+8. **Apply**: writes the lock, materializes symlinks, writes the resolved templates into the adopter workspace, fires the post-checkout hook.
 
-## Mudanças nas skills existentes
+## Changes to existing skills
 
-Cada skill ganha:
+Each skill gains:
 
-- `manifest.yaml` com tags estruturadas.
-- `params.schema.json` se aceita parâmetros do adopter.
-- `templates/` se gera arquivos no workspace adopter (templates Jinja2 ou similar).
-- `params.defaults.yaml` com defaults seguros.
+- `manifest.yaml` with structured tags.
+- `params.schema.json` if it accepts adopter parameters.
+- `templates/` if it generates files in the adopter workspace (Jinja2 templates or similar).
+- `params.defaults.yaml` with safe defaults.
 
-SKILL.md continua existindo, é a prose pro humano e pro agente. Manifest é o contrato pra máquina.
+SKILL.md still exists; it is the prose for the human and the agent. The manifest is the contract for the machine.
 
-Custo: cada skill hoje (~17) precisa ser auditada e ganhar manifest. Estimativa grossa: 30 minutos por skill com manifest simples, 2 horas para as que têm templates não triviais.
+Cost: each skill today (~17) needs to be audited and gain a manifest. Rough estimate: 30 minutes per skill with a simple manifest, 2 hours for the ones with non-trivial templates.
 
-## Mudanças nos templates por adopter
+## Changes to per-adopter templates
 
-Hoje `projects/_template/` tem 20+ arquivos `.md` estáticos. Esses arquivos passam a viver dentro das skills que de fato os consomem, como Jinja2 templates parametrizáveis:
+Today `projects/_template/` has 20+ static `.md` files. Those files move to live inside the skills that actually consume them, as parameterizable Jinja2 templates:
 
 ```text
 skills/pr-management-triage/templates/
@@ -303,55 +303,55 @@ skills/pr-management-triage/templates/
 └── canned-responses.md.j2
 ```
 
-Adopter parametriza via `intent.overrides.params` ou substitui template inteiro via `.apache-steward-overrides/canned-replies/pr-management-triage.md`.
+The adopter parameterizes via `intent.overrides.params` or replaces the whole template via `.apache-steward-overrides/canned-replies/pr-management-triage.md`.
 
-`projects/_template/` no repo Magpie vira `projects/_example-airflow/`: intent + lock reais que servem como exemplo navegável, não como pasta de copy-paste.
+`projects/_template/` in the Magpie repo becomes `projects/_example-airflow/`: a real intent + lock that serves as a navigable example, not a copy-paste folder.
 
-## Mudanças nos docs
+## Changes to the docs
 
-Documentação ganha pasta nova `docs/adoption/` com:
+Documentation gains a new folder `docs/adoption/` with:
 
-- **`intent-cookbook.md`**: exemplos de intent.yaml por perfil de projeto (projeto pequeno só com triage, projeto ASF com fluxo security completo, projeto não-ASF, etc.).
-- **`override-guide.md`**: quando usar exclude vs force-include vs pin. Anti-patterns.
-- **`plan-apply-cycle.md`**: como rodar `magpie plan`, ler diff, aplicar.
-- **`migration-when-skill-renames.md`**: como o reconciler avisa que uma skill mudou, e o que editar no intent.
+- **`intent-cookbook.md`**: examples of intent.yaml per project profile (a small project with triage only, an ASF project with the full security flow, a non-ASF project, and so on).
+- **`override-guide.md`**: when to use exclude vs force-include vs pin. Anti-patterns.
+- **`plan-apply-cycle.md`**: how to run `magpie plan`, read the diff, apply.
+- **`migration-when-skill-renames.md`**: how the reconciler warns that a skill has changed, and what to edit in the intent.
 
-Docs existentes que precisam atualizar:
+Existing docs that need updating:
 
-- `docs/setup/README.md`: fluxo de adoção muda. Setup install permanece, takeover muda pra "edita intent, roda plan, roda apply".
-- `docs/modes.md`: passa a explicar modes como **projeção do intent**, não como organização interna. Continua útil como narrativa externa.
-- `README.md` topo: substituir "skill families" pela linguagem de capabilities.
+- `docs/setup/README.md`: the adoption flow changes. Setup install stays, takeover changes to "edit intent, run plan, run apply".
+- `docs/modes.md`: starts explaining modes as a **projection of the intent**, not as internal organization. Still useful as external narrative.
+- `README.md` top: replace "skill families" with capabilities language.
 
-## Sequência de migração proposta
+## Proposed migration sequence
 
-Não dá pra trocar tudo num PR. Sequência:
+You cannot swap everything in one PR. The sequence:
 
-1. **PR 1**: introduzir `agent/taxonomy/` + schemas. Sem mudar comportamento.
-2. **PR 2**: introduzir `manifest.yaml` em uma skill piloto (security-issue-import). Sem reconciler ainda.
-3. **PR 3**: backfill manifests no resto das skills, em ondas (uma família por PR).
-4. **PR 4**: build do `registry/skills-index.json` em CI. Validador de manifest contra taxonomia.
-5. **PR 5**: reconciler em modo `plan` only, sem apply. Adopter pode rodar pra ver o que aconteceria.
-6. **PR 6**: `apply` em modo opt-in, atrás de flag. Apoiadores piloto experimentam.
-7. **PR 7**: templates Jinja2 em uma skill piloto.
-8. **PR 8 em diante**: migrar templates dos `projects/_template/` pra dentro das skills, deprecar `_template/` em favor de `_example-airflow/`.
-9. **PR final**: flip do default. Setup-steward passa a operar em Modelo C.
+1. **PR 1**: introduce `agent/taxonomy/` + schemas. No behavior change.
+2. **PR 2**: introduce `manifest.yaml` in one pilot skill (security-issue-import). No reconciler yet.
+3. **PR 3**: backfill manifests across the rest of the skills, in waves (one family per PR).
+4. **PR 4**: build `registry/skills-index.json` in CI. Manifest validator against the taxonomy.
+5. **PR 5**: reconciler in `plan`-only mode, no apply. Adopters can run it to see what would happen.
+6. **PR 6**: `apply` in opt-in mode, behind a flag. Pilot supporters try it out.
+7. **PR 7**: Jinja2 templates in one pilot skill.
+8. **PR 8 onward**: migrate the templates from `projects/_template/` into the skills, deprecate `_template/` in favor of `_example-airflow/`.
+9. **Final PR**: flip the default. Setup-steward starts operating in Model C.
 
-Cada PR é reversível. Adopter atual não quebra enquanto a sequência roda.
+Each PR is reversible. The current adopter does not break while the sequence runs.
 
-## Riscos e mitigações
+## Risks and mitigations
 
-| Risco | Mitigação |
+| Risk | Mitigation |
 |-------|-----------|
-| Reconciler vira god-component | Manter regras explícitas em YAML/data, código só executa regras. Sem heurística secreta. |
-| Adopter abusa de override e perde regime intent | Linter no `plan`: se >5 overrides, sugere repensar capabilities. Warning, não erro. |
-| Manifest fica desatualizado vs SKILL.md | CI valida: campos comuns (status, domínios) batem. PR review checklist exige update sincronizado. |
-| Schema do lock muda quebrando adopters antigos | Schema versionado. Reconciler suporta N-2 versões. Migration tool oferece upgrade. |
-| Renomeação de skill quebra lock | Migration registry mapeia old-id → new-id. Reconciler aplica auto-rename no `plan`, adopter aprova. |
-| Curva de aprendizado pesada pro PMC | `intent-cookbook.md` com exemplos prontos. Onboarding via `magpie init` interativo que gera intent.yaml inicial. |
+| Reconciler becomes a god-component | Keep the rules explicit in YAML/data, code only executes rules. No secret heuristics. |
+| Adopter abuses overrides and loses the intent regime | Linter in `plan`: if >5 overrides, suggest rethinking capabilities. Warning, not error. |
+| Manifest drifts out of sync with SKILL.md | CI validates: common fields (status, domains) match. PR review checklist requires a synchronized update. |
+| Lock schema changes, breaking old adopters | Versioned schema. Reconciler supports N-2 versions. Migration tool offers an upgrade. |
+| Skill rename breaks the lock | Migration registry maps old-id to new-id. Reconciler applies an auto-rename in `plan`, the adopter approves. |
+| Heavy learning curve for the PMC | `intent-cookbook.md` with ready-made examples. Onboarding via an interactive `magpie init` that generates an initial intent.yaml. |
 
-## O que **não** muda
+## What does **not** change
 
-- Os modos (Triage, Mentoring, Drafting, Pairing, Auto-merge) sobrevivem como narrativa externa em MISSION.md e como projeção derivada do intent. Não viram unidade de configuração técnica.
-- Mecanismo de install (svn-zip, git-tag, git-branch) permanece. O lock continua pinando install method.
-- Sandbox, secure-agent setup, permission rules: ortogonais ao modelo de adoção. Não tocam.
-- Symlinks no `.claude/skills/` do adopter continuam sendo a forma de o Claude Code enxergar as skills. Mudou só quem decide quais symlinks existem.
+- The modes (Triage, Mentoring, Drafting, Pairing, Auto-merge) survive as external narrative in MISSION.md and as a projection derived from the intent. They do not become a unit of technical configuration.
+- The install mechanism (svn-zip, git-tag, git-branch) stays. The lock keeps pinning the install method.
+- Sandbox, secure-agent setup, permission rules: orthogonal to the adoption model. Untouched.
+- The symlinks in the adopter's `.claude/skills/` remain the way Claude Code sees the skills. Only who decides which symlinks exist has changed.
