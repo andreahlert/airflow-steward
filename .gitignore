@@ -39,6 +39,8 @@ logs
 # Python
 __pycache__/
 *.py[cod]
+.venv/
+.python-version
 
 # Lychee link-checker result cache. The workflow restores this from
 # Actions cache between runs; checking it in would commit machine-
@@ -63,3 +65,9 @@ pilot-*/
 # tools/pilot-report-validator is a committed framework tool, not an evidence package
 !/tools/pilot-report-validator/
 reassess-*/
+
+# The `*-reassess/` pattern above is broad on purpose (catches
+# evidence packages anywhere in adopter trees). The issue-reassess
+# skill directory shares the suffix; allow it back in.
+!skills/issue-reassess/
+!skills/issue-reassess/**

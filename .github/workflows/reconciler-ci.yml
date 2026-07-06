@@ -1,0 +1,133 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+---
+name: reconciler-ci
+
+on:  # yamllint disable-line rule:truthy
+  pull_request:
+    paths:
+      - "agent/taxonomy/**"
+      - "skills/**/manifest.yaml"
+      - "skills/**/params.schema.json"
+      - "skills/**/params.defaults.yaml"
+      - "reconciler/**"
+      - "registry/**"
+      - ".github/workflows/reconciler-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "agent/taxonomy/**"
+      - "skills/**/manifest.yaml"
+      - "skills/**/params.schema.json"
+      - "skills/**/params.defaults.yaml"
+      - "reconciler/**"
+      - "registry/**"
+      - ".github/workflows/reconciler-ci.yml"
+
+permissions: {}
+
+jobs:
+  validate-and-build:
+    name: "validate taxonomy + manifests, check registry"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      FORCE_COLOR: "1"
+      PY_COLORS: "1"
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+
+      # uv brings its own Python. Reconciler deps are pinned in
+      # `reconciler/pyproject.toml` + `reconciler/uv.lock`; `uv sync`
+      # honours the lock so checksum-sensitive lock output is
+      # deterministic across runs.
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Validate taxonomy
+        run: uv run --project reconciler --group dev python reconciler/validate_taxonomy.py
+
+      - name: Validate skill manifests
+        run: uv run --project reconciler --group dev python reconciler/validate_manifests.py
+
+      # The on-disk registry must match what would be generated from
+      # current manifests. A manifest edit without a registry rebuild
+      # is a merge blocker — the registry is committed precisely so
+      # that adopter tooling can read a single canonical file without
+      # walking the tree.
+      - name: Check registry is up to date
+        run: uv run --project reconciler --group dev python reconciler/build_registry.py --check --stable-timestamp
+
+      # Reconciler pytest runs in the per-project matrix in
+      # `tests.yml` to keep the per-project pass/fail signal in CI
+      # consistent with the other Python projects under `tools/`.
+
+      - name: Smoke test plan CLI against fixture intent
+        # End-to-end against the real registry. Exit 2 is expected
+        # because the fixture intent has no on-disk lock — plan
+        # surfaces changes, which is the contractual exit code.
+        run: |
+          set +e
+          uv run --project reconciler --group dev magpie-reconciler plan \
+            --intent reconciler/tests/fixtures/intent-minimal.yaml \
+            --lock /nonexistent.lock
+          rc=$?
+          if [ "$rc" -ne 2 ]; then
+            echo "plan CLI returned $rc, expected 2 (changes detected)" >&2
+            exit 1
+          fi
+
+      - name: Smoke test apply CLI in dry-run and write modes
+        # Dry-run writes nothing; the subsequent real run produces a
+        # lock that must validate against lock.schema.json plus
+        # renders the Jinja2 templates declared by resolved skills.
+        env:
+          LOCK_PATH: ${{ runner.temp }}/apply-smoke/.apache-magpie.lock
+          RENDER_DIR: ${{ runner.temp }}/apply-smoke/rendered
+        run: |
+          set -e
+          mkdir -p "$(dirname "$LOCK_PATH")"
+          uv run --project reconciler --group dev magpie-reconciler apply \
+            --intent reconciler/tests/fixtures/intent-minimal.yaml \
+            --lock "$LOCK_PATH" \
+            --render-templates-to "$RENDER_DIR" \
+            --dry-run
+          test ! -f "$LOCK_PATH"
+          test ! -d "$RENDER_DIR"
+          uv run --project reconciler --group dev magpie-reconciler apply \
+            --intent reconciler/tests/fixtures/intent-minimal.yaml \
+            --lock "$LOCK_PATH" \
+            --render-templates-to "$RENDER_DIR"
+          test -f "$LOCK_PATH"
+          test -f "$RENDER_DIR/pr-management-triage/comment-templates.md"
+          uv run --project reconciler --group dev python -c "
+          import json, yaml, os, sys
+          from jsonschema import Draft202012Validator
+          schema = json.load(open('reconciler/schemas/lock.schema.json'))
+          lock = yaml.safe_load(open(os.environ['LOCK_PATH']))
+          errors = list(Draft202012Validator(schema).iter_errors(lock))
+          if errors:
+              for e in errors:
+                  print(f'{list(e.path)}: {e.message}')
+              sys.exit(1)
+          print('lock validates against lock.schema.json')
+          "
